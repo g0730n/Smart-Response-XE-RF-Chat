@@ -1,4 +1,4 @@
-Info:
+-Info:
 ______________________
 
 I mainly wrote this program to learn about the devices wireless capabilities, and become more familiar with C++ programming, and the Smart Response XE in general.
