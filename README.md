@@ -1,3 +1,12 @@
+Info:
+______________________
+I mainly wrote this program to learn about the devices wireless capabilities, and become more familiar with C++ programming, and the Smart Response XE in general.
+
+Current issues I am trying to figure out is making an option for device to be woken from sleep if a new message comes in. I have no issue having a new message waking device from sleep, but the woken device has issues transmitting after that. I need to learn more about the devices registers and interrupts to make this work.
+
+Also messages can get garbled if two devices try to send at same time, or one device sends messages too fast.
+
+
 Setup:
 ----------------------
 This program for the Smart Response XE requires Larry Bank's support library which can be downloaded here:
