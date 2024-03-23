@@ -23,11 +23,11 @@ TRXPR = 1 << SLPTR; // send transceiver to sleep
 
 Commands:
 ---------------------
-Change username:  _n
+Change username:  _n working
 
 Sleep device:     _p or _p1 to set device to wake up when message is received(not working yet)
 
-Change channel    _c<channel>  (eg. "_c11", "c_23") currently not working.
+Change channel    _c<channel>  (eg. "_c11", "c_23") working
 
 Usage:
 --------------------

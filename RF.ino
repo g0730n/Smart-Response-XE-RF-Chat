@@ -47,6 +47,8 @@ char name[NAME_LENGTH];           //username
 byte key;               //variable to store pressed keys
 bool start;             //if true, asks to set username
 
+uint8_t chan = 26;
+
 unsigned long idleTime; //variables for sleeping,
 unsigned long idleCount; //if user hasn't pressed a key in a while
 
@@ -78,32 +80,6 @@ void welcomeMsg(){
   SRXEWriteString(198,60, "!", FONT_LARGE, 3, 0);
   delay(1000);
   clearLine(0,60);
-}
-
-//function to run on first boot or wake
-void initDevice(){
-
-  SRXEInit(0xe7, 0xd6, 0xa2);
-
-  buffPos = 0;
-
-  if (start == true){
-    setName(); 
-  }
-
-  if (wakeOnReceive == 0){
-    msgSent = 0;
-    msgRecv = 0;
-    clearScreen();
-  }
-
-  welcomeMsg();
-  clearKeyBuffer();
-  updateKeyBuffer();
-
-  rfBegin(26);
-
-  idleTime = millis();
 }
 
 //function to create or change username
@@ -280,14 +256,43 @@ void sendMessage(){
       clearLine(0, 120);
       setName();  //change the username
     }
-    if (keyBuffer[6] == 'c' && (keyBuffer[7] >= 49 && keyBuffer[7] <= 50) && (keyBuffer[8] >= 48 && keyBuffer[8] <= 57) ){
+    if (keyBuffer[6] == 'c'){
+      uint8_t num1 = keyBuffer[7] - '0';
 
-      uint8_t chan = keyBuffer[7] * 10 + keyBuffer[8];
-  
-      snprintf(tmp, BUFF_LENGTH, "Changing RF chan to: %d", chan);
+      if (num1 >= 1 && num1 <= 2){
+        uint8_t num2 = keyBuffer[8] - '0';
+
+        if (num2 >= 0 && num2 <= 9) {
+          uint8_t tmpChan = num1 * 10 + num2;
+
+          if (tmpChan >= 11 && tmpChan <= 26){
+            if (tmpChan != chan){
+              chan = tmpChan;
+              snprintf(tmp, BUFF_LENGTH, "Changing RF chan to: %d", chan);
+            }
+            else{
+              snprintf(tmp, BUFF_LENGTH, "RF Chan is set to: %d", chan);
+            }
+
+          }
+          else{
+            snprintf(tmp, BUFF_LENGTH, "Only Channels 11-26!");
+          }
+          
+        }
+      }
+      else{
+        if (keyBuffer[7] == 0){
+          snprintf(tmp, BUFF_LENGTH, "RF Chan is set to: %d", chan);
+        }
+        else{
+          snprintf(tmp, BUFF_LENGTH, "Invalid Channel!");
+        }
+        
+      }
       SRXEWriteString(0, 120, tmp, FONT_LARGE, 3, 0);
-      delay(500);
-      //rfBegin(chan); //this doesn't work. Think it has to do with a register state...
+      delay(1000);
+      rfBegin(chan);
     }
   }
   else {
@@ -335,6 +340,32 @@ void checkMessages(){
     msgRecv++;
     updateStatus();
   }
+}
+
+//function to run on first boot or wake
+void initDevice(){
+
+  SRXEInit(0xe7, 0xd6, 0xa2);
+
+  buffPos = 0;
+
+  if (start == true){
+    setName(); 
+  }
+
+  if (wakeOnReceive == 0){
+    msgSent = 0;
+    msgRecv = 0;
+    clearScreen();
+  }
+
+  welcomeMsg();
+  clearKeyBuffer();
+  updateKeyBuffer();
+
+  rfBegin(chan);
+
+  idleTime = millis();
 }
 
 void setup() {
