@@ -26,18 +26,16 @@
   ---------------------edits by g0730n----------------------
   3/19/2024: 
   I've removed everything to do with LED's from
-  original code. As well as added some code for waiting for
+  original code as SRXE does not have these LED. 
+  As well as added some code for waiting for
   a reply from receiver and retrying to send message if we
   dont get it. That code was inspired by looking at Larry
   Bank's wireless bootloader for Smart Response XE.
 */
-  
 
 #define MAX_RF_WAIT 300000L
 #define MAX_RETRY 10
 #define RF_BUFFER_SIZE 128
-
-char rfRead();            //define rfRead() function
 
 //Global variables for keeping track of things between ISR's and functions
 uint8_t rssiRaw;          // Global variable shared between RX ISRs
@@ -46,6 +44,8 @@ uint32_t sendTimeout;     //timeout variable for sending a message
 bool rfReceived;          //flag if a valid message was received
 bool rfSent;              //flag if we successfully sent a message and received confirmation back
 bool rfFailed;            //flag if we tried sending message and never received confirmation back
+bool txBusy;
+uint8_t wakeOnReceive;    //flag for setting device to wake when msg received
 
 // A buffer to maintain data being received by radio.
 struct ringBuffer
@@ -61,6 +61,12 @@ uint8_t rfOFF(){
   //not sure if needed but lets reset our RXbuffer read positions
   radioRXBuffer.tail = 0;
   radioRXBuffer.head = 0;
+
+  /* //code for setting registers if device is to be woken from RF
+  if (wakeOnReceive){
+    
+  }
+  */
 
   TRXPR |= (1<<TRXRST);   // TRXRST = 1 (Reset state, resets all registers)
 
@@ -78,6 +84,7 @@ uint8_t rfOFF(){
   if ((TRX_STATUS & 0x1F) != TRX_OFF) // Check to make sure state is correct
     return 0;	// Error, TRX isn't off
 
+  SRXEWriteString(129,60, "RADIO OFF!", FONT_LARGE, 3, 0);
   return 1;
 }
 
@@ -102,6 +109,7 @@ uint8_t rfBegin(uint8_t channel)
   rfReceived = false;
   rfSent = false;
   rfFailed = false;
+  txBusy = false;
 
   // Transceiver Pin Register -- TRXPR.
   // This register can be used to reset the transceiver, without
@@ -116,7 +124,7 @@ uint8_t rfBegin(uint8_t channel)
   // Transceiver State Control Register -- TRX_STATE
   // This regiseter controls the states of the radio.
   // First, we'll set it to the TRX_OFF state.
-  TRX_STATE = (TRX_STATE & 0xE0) | TRX_OFF;  // Set to TRX_OFF state
+  //TRX_STATE = (TRX_STATE & 0xE0) | TRX_OFF;  // Set to TRX_OFF state
   delay(1);
   
   // Transceiver Status Register -- TRX_STATUS
@@ -192,14 +200,14 @@ void rfPrint(String toPrint)
     while (radioRXBuffer.buffer[radioRXBuffer.tail] != 0x10 && sendTimeout < MAX_RF_WAIT) {
       sendTimeout++;
     }
-    if (sendTimeout >= MAX_RF_WAIT)  //timed out, increment retry counter to try again
-    {
+    //timed out, increment retry counter to try again
+    if (sendTimeout >= MAX_RF_WAIT){
       retryCount++;
       delay(100);
-      continue;  // send it again
+      continue;  // try sending it again
     }
-    if (radioRXBuffer.buffer[radioRXBuffer.tail] == 0x10)      // we received the confirmation from receiver
-    {
+    // we received the confirmation from receiver
+    if (radioRXBuffer.buffer[radioRXBuffer.tail] == 0x10){
       radioRXBuffer.tail = (unsigned int)(radioRXBuffer.tail + 1) % RF_BUFFER_SIZE; //increment the RXBuffer tail
       rfSent = true; //set the sent flag
       continue;
@@ -215,8 +223,8 @@ void rfPrint(String toPrint)
   retryCount = 0;
   rfSent = false; 
   //reset our readbuffer (not sure if needed)
-  radioRXBuffer.tail = 0;
-  radioRXBuffer.head = 0;
+  //radioRXBuffer.tail = 0;
+  //radioRXBuffer.head = 0;
 }
 
 // This function will transmit a single byte out of the radio.
@@ -231,6 +239,8 @@ void rfWrite(uint8_t b)
   while(!(TRX_STATUS & PLL_ON))
     ;  // Wait for PLL to lock
 
+  while (txBusy == true) { };
+
   // Start of frame buffer - TRXFBST
   // This is the first byte of the 128 byte frame. It should contain
   // the length of the transmission.
@@ -242,6 +252,8 @@ void rfWrite(uint8_t b)
   // From the PLL_ON state, setting SLPTR high will initiate the TX.
   TRXPR |= (1<<SLPTR);   // SLPTR = 1
   TRXPR &= ~(1<<SLPTR);  // SLPTR = 0  // Then bring it back low
+
+  txBusy = true; //txBusy flag (we are sending the byte!)
 
   // After sending the byte, set the radio back into the RX waiting state.
   TRX_STATE = (TRX_STATE & 0xE0) | RX_ON;
@@ -276,7 +288,7 @@ char rfRead()
 // This interrupt is called when radio TX is complete.
 ISR(TRX24_TX_END_vect)
 {
-  ;
+  txBusy = false;
 }
 
 // This interrupt is called the moment data is received by the radio.
@@ -315,18 +327,19 @@ ISR(TRX24_RX_END_vect)
       i = (i + 1) % RF_BUFFER_SIZE; // Increment i % BUFFER_SIZE
     }
     //check the last byte received
-    char c = radioRXBuffer.buffer[radioRXBuffer.tail];
-    //if it's not equal to our confirmation byte, it means we just
-    //received a message, so we need to send the confirmation byte
-    if (c != 0x10){
-      //send confirmation
-      rfWrite(0x10);
-      //set the received flag to true so our programs will know to check for RX data
-      rfReceived = true;
-    }
-  }else{
+      char c = radioRXBuffer.buffer[radioRXBuffer.tail];
+      //if it's not equal to our confirmation byte, it means we just
+      //received a message, so we need to send the confirmation byte
+      if (c != 0x10){
+        //send confirmation
+        rfWrite(0x10);
+        //set the received flag to true so our programs will know to check for RX data
+        rfReceived = true;
+      }
+  }
+  else{
     //reset our RXbuffer read locations (unneeded?)
-    radioRXBuffer.tail = 0;
-    radioRXBuffer.head = 0;
+    //radioRXBuffer.tail = 0;
+    //radioRXBuffer.head = 0;
   }
 }

@@ -1,6 +1,5 @@
---Info:
-______________________
-
+Info:
+---------------------
 I mainly wrote this program to learn about the devices wireless capabilities, and become more familiar with C++ programming, and the Smart Response XE in general.
 
 This program is kind of pointless, because for messages to go through you have to be in the same room as someone. But in the future a working and reliable RF data transmitting program or library would be awesome for this device. Use cases could range from multiplayer games (e.g. tic tac to, cows and bulls, battleship, etc), general data transfer, or impliment with other programs such as Arduino Basic for Smart Response XE to send programs between each device (my original goal for learning about the devices wireless ;).
@@ -26,7 +25,7 @@ Commands:
 ---------------------
 Change username:  _n
 
-Sleep device:     bye
+Sleep device:     _p or _p1 to set device to wake up when message is received(not working yet)
 
 Usage:
 --------------------
