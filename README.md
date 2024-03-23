@@ -27,6 +27,8 @@ Change username:  _n
 
 Sleep device:     _p or _p1 to set device to wake up when message is received(not working yet)
 
+Change channel    _c<channel>  (eg. "_c11", "c_23") currently not working.
+
 Usage:
 --------------------
 When the devices are facing each other, and under 25 feet away,
